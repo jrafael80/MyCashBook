@@ -20,19 +20,21 @@
         android:layout_height="wrap_content"
         android:inputType="textAutoComplete"
         android:hint="@string/label_id"
+        android:text="Kiosko"
         android:id="@+id/editId"/>
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="numberDecimal"
         android:hint="@string/label_importe"
-
+        android:text="40"
         android:ems="1"
         android:id="@+id/editContent"/>
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/label_detalle"
+        android:text="Cigarrillos"
         android:id="@+id/editDetails" />
     <Button
         android:layout_width="match_parent"

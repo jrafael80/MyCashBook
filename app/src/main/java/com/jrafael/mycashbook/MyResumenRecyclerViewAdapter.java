@@ -18,12 +18,13 @@ import java.util.List;
  */
 public class MyResumenRecyclerViewAdapter extends RecyclerView.Adapter<MyResumenRecyclerViewAdapter.ViewHolder> {
 
-    private final List<DummyItem> mValues;
+    public List<DummyItem> mValues;
     private final OnListFragmentInteractionListener mListener;
 
     public MyResumenRecyclerViewAdapter(List<DummyItem> items, OnListFragmentInteractionListener listener) {
         mValues = items;
         mListener = listener;
+
     }
 
     @Override

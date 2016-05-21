@@ -8,7 +8,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,9 +17,20 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.google.android.gms.auth.GoogleAuthException;
+import com.google.api.services.script.model.ExecutionRequest;
+import com.google.api.services.script.model.Operation;
 import com.jrafael.mycashbook.dummy.DummyContent;
 
-public class MainActivity extends AppCompatActivity implements ResumenFragment.OnListFragmentInteractionListener {
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+public class MainActivity extends BaseActivity<List<DummyContent.DummyItem>>
+        implements ResumenFragment.OnListFragmentInteractionListener,
+        BaseActivity.AppScriptRequestTask<List<DummyContent.DummyItem>> {
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -40,7 +50,12 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setAppScriptRequestTask(this);
+
         setContentView(R.layout.activity_main2);
+
+
+
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -69,19 +84,91 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 mViewPager.setCurrentItem(tab.getPosition());
-                if (tab.getPosition()==1) fab.hide();
+                if (tab.getPosition() == 1) fab.hide();
             }
 
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
-                if (tab.getPosition()==1) fab.show();
+                if (tab.getPosition() == 1) fab.show();
             }
 
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
+                if (tab.getPosition() == 0) MainActivity.this.getResultsFromApi();
 
             }
         });
+
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        getResultsFromApi();
+    }
+
+    @Override
+    public void onPreExecute() {
+    }
+    @Override
+    public List<DummyContent.DummyItem> getDataFromApi(com.google.api.services.script.Script mService)
+            throws IOException, GoogleAuthException {
+        // ID of the script to call. Acquire this from the Apps Script editor,
+        // under Publish > Deploy as API executable.
+        String scriptId =
+                "Mdxc3nmYupeD7rv2wAg50EBDBVl2wBwDj";
+
+        List<DummyContent.DummyItem> folderList = new ArrayList<DummyContent.DummyItem>();
+
+        // Create an execution request object.
+        ExecutionRequest request = new ExecutionRequest()
+
+                .setFunction("getResumen");
+        // .setFunction("appendRow")
+        //         .setParameters(Arrays.asList(new Object[] {
+        //                         Arrays.asList(new Object[] {
+        //                             new Date(), "Mi primer Gasto", 1231, "Kiosko"
+        //                         })
+        //         }));
+
+
+
+
+
+        // Make the request.
+        Operation op =
+                mService.scripts().run(scriptId, request).execute();
+
+        // Print results of request.
+        if (op.getError() != null) {
+            throw new IOException(getScriptError(op));
+        }
+
+        String toPrettyString= op.toPrettyString();
+
+        if (op.getResponse() != null &&
+                op.getResponse().get("result") != null) {
+            // The result provided by the API needs to be cast into
+            // the correct type, based upon what types the Apps Script
+            // function returns. Here, the function returns an Apps
+            // Script Object with String keys and values, so must be
+            // cast into a Java Map (folderSet).
+            List<List<?>> result =
+                    (List<List<?>>)(op.getResponse().get("result"));
+
+            for (List<?> row: result) {
+                folderList.add(new DummyContent.DummyItem(row.get(0).toString(),row.get(1).toString(),row.get(2).toString()));
+            }
+        }
+
+        return folderList;
+    }
+
+
+    @Override
+    public void onPostExecute(List<DummyContent.DummyItem> output) {
+        ((ResumenFragment)mSectionsPagerAdapter.getItem(0)).updateItems(output);
 
     }
 
@@ -121,7 +208,7 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
         public  EditText mContentEdit;
         public  EditText mDetailsEdit;
 
-
+        MainActivity that;
         public AppendRowFragment() {
         }
 
@@ -129,8 +216,9 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
          * Returns a new instance of this fragment for the given section
          * number.
          */
-        public static AppendRowFragment newInstance() {
+        public static AppendRowFragment newInstance(MainActivity that) {
             AppendRowFragment fragment = new AppendRowFragment();
+            fragment.that = that;
             return fragment;
         }
 
@@ -146,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
             submit.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    that.appendRow(new Object[]{new SimpleDateFormat("dd/MM/yyyy kk:mm").format(new Date()), mIdEdit.getText().toString(), mContentEdit.getText().toString(), mDetailsEdit.getText().toString()});
                     Snackbar.make(v, "Replace with your own action", Snackbar.LENGTH_LONG)
                             .setAction("Action", null).show();
                 }
@@ -166,8 +255,8 @@ public class MainActivity extends AppCompatActivity implements ResumenFragment.O
         }
 
         Fragment[] mFragments = new Fragment[] {
-                ResumenFragment.newInstance(1)
-                , AppendRowFragment.newInstance()
+                ResumenFragment.newInstance()
+                , AppendRowFragment.newInstance(MainActivity.this)
         };
         @Override
         public Fragment getItem(int position) {
