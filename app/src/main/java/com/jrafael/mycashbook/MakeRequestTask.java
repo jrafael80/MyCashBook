@@ -26,6 +26,8 @@ import java.util.Map;
 public class MakeRequestTask extends AsyncTask<Void, Void, Map<String, Object>> {
     private com.google.api.services.script.Script mService = null;
     private Exception mLastError = null;
+
+    //TODO replace with your's sciptId
     String scriptId =
             "Mdxc3nmYupeD7rv2wAg50EBDBVl2wBwDj";
 
@@ -33,18 +35,25 @@ public class MakeRequestTask extends AsyncTask<Void, Void, Map<String, Object>> 
     ExecutionRequest request;
 
     /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
+     * This interface must be implemented by every  App Script function that'll call.
      * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
+     *
      */
     public interface AppScriptRequestHandler {
+        /**
+         * to set the request function's name, parameters, etc
+         * @param request to use
+         */
         void onPreExecute(ExecutionRequest request);
+        /**
+         * Positive result
+         * @param response
+         */
         void onPostExecute(java.util.Map<String, java.lang.Object> response);
+        /**
+         * Negative result
+         * @param e with the reason of the fail
+         */
         void onCancelled(Exception e);
     }
 
@@ -117,7 +126,7 @@ public class MakeRequestTask extends AsyncTask<Void, Void, Map<String, Object>> 
         JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
         mService = new com.google.api.services.script.Script.Builder(
                 transport, jsonFactory, setHttpTimeout(credential))
-                .setApplicationName("Google Apps Script Execution API Android Quickstart")
+                .setApplicationName("Google Apps Script Execution API Android MyCashBook")
                 .build();
         this.delegate = delegate;
     }

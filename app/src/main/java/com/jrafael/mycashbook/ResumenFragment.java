@@ -37,7 +37,6 @@ public class ResumenFragment extends Fragment implements BaseActivity.ListenerGe
     }
 
     // TODO: Customize parameter initialization
-    @SuppressWarnings("unused")
     public static ResumenFragment newInstance() {
         ResumenFragment fragment = new ResumenFragment();
         return fragment;
@@ -51,6 +50,7 @@ public class ResumenFragment extends Fragment implements BaseActivity.ListenerGe
 
 
     }
+
 
     public void onGetResumen(List<DummyItem> items)
     {

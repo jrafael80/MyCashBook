@@ -32,9 +32,13 @@ import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
 /**
- * A BaseActivity that provoid access App Script.
+ * A BaseActivity that provides access App Script by:
+ * <li>Initialize credentials and service object</li>
+ * <li>Select account</li>
+ * <li>Check Internet conection</li>
+ * <li>Ask authorization</li>
  * <p/>
- * There are two type of Request for App Script method.
+ * Also give to methods that Request for App Script function.
  * @link getResumen
  * @ling appendRow
  *
@@ -69,7 +73,6 @@ public class BaseActivity extends AppCompatActivity
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
     }
-
 
 
 
@@ -247,7 +250,7 @@ public class BaseActivity extends AppCompatActivity
             ).show();
 
         } else {
-            //Tarea por defecto.
+            //Default function.
            getResumen();
         }
     }

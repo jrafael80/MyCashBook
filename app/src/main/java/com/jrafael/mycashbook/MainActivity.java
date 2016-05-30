@@ -2,7 +2,6 @@ package com.jrafael.mycashbook;
 
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -22,6 +21,10 @@ import com.jrafael.mycashbook.dummy.DummyContent;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+
+/**
+ *
+ */
 public class MainActivity extends BaseActivity
         implements ResumenFragment.OnListFragmentInteractionListener {
 
@@ -43,9 +46,9 @@ public class MainActivity extends BaseActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main2);
 
+        //Get Toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 
         setSupportActionBar(toolbar);
@@ -55,8 +58,10 @@ public class MainActivity extends BaseActivity
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
-        //TODO esto no queda muy elegante.
+        //Set onListenerGetResumen.
+        //TODO improve ListenerGetResumen and ResumeFragment relationship
         setOnListenerGetResumen((ResumenFragment) mSectionsPagerAdapter.mFragments[0]);
+
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
@@ -64,6 +69,7 @@ public class MainActivity extends BaseActivity
         final TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(mViewPager);
 
+        // Set up Plus Button.
         final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,17 +84,20 @@ public class MainActivity extends BaseActivity
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 mViewPager.setCurrentItem(tab.getPosition());
+                //Hide plus button when the tab is the appendRowFragment
                 if (tab.getPosition() == 1) fab.hide();
             }
 
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
+                //Show plus button when the tab isn't the appendRowFragment
                 if (tab.getPosition() == 1) fab.show();
             }
 
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
-                if (tab.getPosition() == 0) MainActivity.this.getResultsFromApi();
+                //Refresh resumen when double click's its tab
+                if (tab.getPosition() == 0) MainActivity.this.getResumen();
 
             }
         });
@@ -96,12 +105,12 @@ public class MainActivity extends BaseActivity
 
     }
 
+    //Start with a request.
     @Override
     protected void onStart() {
         super.onStart();
         getResultsFromApi();
     }
-
 
 
     @Override
@@ -132,7 +141,7 @@ public class MainActivity extends BaseActivity
     }
 
     /**
-     * A placeholder fragment containing a simple view.
+     * A Append Row fragment containing a form to do it.
      */
     public static class AppendRowFragment extends Fragment {
         public  EditText mIdEdit;
@@ -146,6 +155,8 @@ public class MainActivity extends BaseActivity
         /**
          * Returns a new instance of this fragment for the given section
          * number.
+         *
+         * TODO, it's badly integrate with the BaseActivity.AppendRow.
          */
         public static AppendRowFragment newInstance(MainActivity that) {
             AppendRowFragment fragment = new AppendRowFragment();
@@ -165,9 +176,11 @@ public class MainActivity extends BaseActivity
             submit.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    //TODO it's badly integrate with the BaseActivity.AppendRow.
                     that.appendRow(new Object[]{new SimpleDateFormat("dd/MM/yyyy kk:mm").format(new Date()), mIdEdit.getText().toString(), mContentEdit.getText().toString(), mDetailsEdit.getText().toString()});
-                    Snackbar.make(v, "Replace with your own action", Snackbar.LENGTH_LONG)
-                            .setAction("Action", null).show();
+
+                    //Snackbar.make(v, "Replace with your own action", Snackbar.LENGTH_LONG)
+                    //        .setAction("Action", null).show();
                 }
             });
 
@@ -185,6 +198,7 @@ public class MainActivity extends BaseActivity
             super(fm);
         }
 
+        //The Fragments are fix.
         Fragment[] mFragments = new Fragment[] {
                 ResumenFragment.newInstance()
                 , AppendRowFragment.newInstance(MainActivity.this)
@@ -198,7 +212,7 @@ public class MainActivity extends BaseActivity
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
+            // Show 2 total pages.
             return mFragments.length;
         }
 
@@ -209,8 +223,6 @@ public class MainActivity extends BaseActivity
                     return getString(R.string.label_resumen);
                 case 1:
                     return getString(R.string.label_append_row);
-                case 2:
-                    return "SECTION 3";
             }
             return null;
         }
