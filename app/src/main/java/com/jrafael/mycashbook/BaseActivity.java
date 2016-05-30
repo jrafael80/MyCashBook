@@ -2,6 +2,7 @@ package com.jrafael.mycashbook;
 
 import android.Manifest;
 import android.accounts.AccountManager;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -9,32 +10,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.Button;
-import android.widget.TextView;
 
-import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
-import com.google.api.services.script.Script;
 import com.google.api.services.script.model.ExecutionRequest;
-import com.google.api.services.script.model.Operation;
 import com.jrafael.mycashbook.dummy.DummyContent;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,13 +31,19 @@ import java.util.Map;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
-public class BaseActivity<T> extends AppCompatActivity
+/**
+ * A BaseActivity that provoid access App Script.
+ * <p/>
+ * There are two type of Request for App Script method.
+ * @link getResumen
+ * @ling appendRow
+ *
+ */
+public class BaseActivity extends AppCompatActivity
         implements EasyPermissions.PermissionCallbacks{
-    GoogleAccountCredential mCredential;
-    private TextView mOutputText;
-    private Button mCallApiButton;
-    ProgressDialog mProgress;
 
+    GoogleAccountCredential mCredential;
+    ProgressDialog mProgress;
 
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
@@ -58,7 +52,6 @@ public class BaseActivity<T> extends AppCompatActivity
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
     private static final String PREF_ACCOUNT_NAME = "accountName";
-    private static final String BUTTON_TEXT = "Call Google Apps Script Execution API";
 
     private static final String[] SCOPES = {
             "https://www.googleapis.com/auth/drive"
@@ -68,29 +61,7 @@ public class BaseActivity<T> extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-/*
-        setContentView(R.layout.activity_main);
 
-        mCallApiButton= (Button) findViewById(R.id.mCallApiButton);
-        mCallApiButton.setText(BUTTON_TEXT);
-        mCallApiButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCallApiButton.setEnabled(false);
-                mOutputText.setText("");
-                getResultsFromApi();
-                mCallApiButton.setEnabled(true);
-            }
-        });
-
-        mOutputText= (TextView) findViewById(R.id.mOutputText);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
-
-*/
         // Initialize credentials and service object.
         mProgress = new ProgressDialog(this);
         mProgress.setMessage("Calling Google Apps Script Execution API ...");
@@ -102,35 +73,103 @@ public class BaseActivity<T> extends AppCompatActivity
 
 
 
+
     /**
-     * Extend the given HttpRequestInitializer (usually a credentials object)
-     * with additional initialize() instructions.
-     *
-     * @param requestInitializer the initializer to copy and adjust; typically
-     *         a credential object.
-     * @return an initializer with an extended read timeout.
+     *  Interface observe de result of GetResumen invocations.
+     *  It's as a callback of asincronic programing.
      */
-    private static HttpRequestInitializer setHttpTimeout(
-            final HttpRequestInitializer requestInitializer) {
-        return new HttpRequestInitializer() {
-            @Override
-            public void initialize(HttpRequest httpRequest)
-                    throws java.io.IOException {
-                requestInitializer.initialize(httpRequest);
-                // This allows the API to call (and avoid timing out on)
-                // functions that take up to 6 minutes to complete (the maximum
-                // allowed script run time), plus a little overhead.
-                httpRequest.setReadTimeout(380000);
-            }
-        };
-    }
-
-    AppScriptRequestTask<T> delegate;
-    public void setAppScriptRequestTask(AppScriptRequestTask<T> delegate) {
-        this.delegate = delegate;
+    public interface ListenerGetResumen {
+        void onGetResumen(List<DummyContent.DummyItem> items);
     }
 
     /**
+     * Internal reference.
+     */
+    private ListenerGetResumen resulter;
+
+    /**
+     * Set the Listener.
+     * @param resulter the new listener.
+     */
+    public void setOnListenerGetResumen(ListenerGetResumen resulter) {
+        this.resulter = resulter;
+    }
+    /**
+     * Call App script with the same name.
+     *
+     * Attempt to call the API, after verifying that all the preconditions are
+     * satisfied. The preconditions are: Google Play Services installed, an
+     * account was selected and the device currently has online access. If any
+     * of the preconditions are not satisfied, the app will prompt the user as
+     * appropriate.
+     */
+    protected void getResumen() {
+        new MakeRequestTask(mCredential,
+                new MakeRequestTask.AppScriptRequestHandler() {
+
+
+                    public void onPreExecute(ExecutionRequest request) {
+                        mProgress.show();
+                        request.setFunction("getResumen");
+                    }
+
+                    public void onPostExecute(Map<String, Object> response) {
+                        mProgress.hide();
+                        List<DummyContent.DummyItem> folderList = new ArrayList<DummyContent.DummyItem>();
+
+                        if (response != null &&
+                                response.get("result") != null) {
+                            // The result provided by the API needs to be cast into
+                            // the correct type, based upon what types the Apps Script
+                            // function returns. Here, the function returns an Apps
+                            // Script Object with String keys and values, so must be
+                            // cast into a Java Map (folderSet).
+                            List<List<?>> result =
+                                    (List<List<?>>)(response.get("result"));
+                            result.set(0, Arrays.asList(new Object[]{"","",""}));
+
+                            for (List<?> row: result) {
+                                folderList.add(new DummyContent.DummyItem(row.get(0).toString(),row.get(1).toString(),row.get(2).toString()));
+                            }
+                        }
+
+                        resulter.onGetResumen(folderList);
+                    }
+
+
+                    public void onCancelled(Exception mLastError) {
+                        mProgress.hide();
+
+                        if (mLastError != null) {
+                            if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
+                                showGooglePlayServicesAvailabilityErrorDialog(
+                                        ((GooglePlayServicesAvailabilityIOException) mLastError)
+                                                .getConnectionStatusCode());
+                            } else if (mLastError instanceof UserRecoverableAuthIOException) {
+                                startActivityForResult(
+                                        ((UserRecoverableAuthIOException) mLastError).getIntent(),
+                                        BaseActivity.REQUEST_AUTHORIZATION);
+                            } else {
+                                new AlertDialog.Builder(BaseActivity.this).setMessage(
+                                        "The following error occurred:\n"
+                                                + mLastError.getMessage()
+                                ).show();
+                            }
+                        } else {
+                            new AlertDialog.Builder(BaseActivity.this).setMessage(
+                                    "Request cancelled."
+                            ).show();
+                        }
+                    }
+                }
+
+        ).execute();
+
+    }
+
+    /**
+     * Call App script with the same name.
+     *
      * Attempt to call the API, after verifying that all the preconditions are
      * satisfied. The preconditions are: Google Play Services installed, an
      * account was selected and the device currently has online access. If any
@@ -139,48 +178,49 @@ public class BaseActivity<T> extends AppCompatActivity
      */
     protected void appendRow(final Object[] parametres) {
 
-            new MakeRequestTask<Integer>(mCredential,
-                    new AppScriptRequestTask<Integer>() {
-                        @Override
-                        public Integer getDataFromApi(Script mService) throws IOException, GoogleAuthException {
-                            String scriptId =
-                                    "Mdxc3nmYupeD7rv2wAg50EBDBVl2wBwDj";
-
-                            List<DummyContent.DummyItem> folderList = new ArrayList<DummyContent.DummyItem>();
-
-                            // Create an execution request object.
-                            ExecutionRequest request = new ExecutionRequest()
-
-                             .setFunction("appendRow")
-                                     .setParameters(Arrays.asList(new Object[] {
-                                             Arrays.asList(parametres)
-                                        }));
+            new MakeRequestTask(mCredential,
+                    new MakeRequestTask.AppScriptRequestHandler() {
 
 
+                        public void onPreExecute(ExecutionRequest request) {
+                            mProgress.show();
+                            request.setFunction("appendRow")
+                                    .setParameters(Arrays.asList(new Object[]{
+                                            Arrays.asList(parametres)
+                                    }));
+                        }
+
+                        public void onPostExecute(Map<String, Object> getResponse) {
+                            mProgress.hide();
+
+                        }
 
 
+                        public void onCancelled(Exception mLastError) {
+                            mProgress.hide();
 
-                            // Make the request.
-                            Operation op =
-                                    mService.scripts().run(scriptId, request).execute();
+                            if (mLastError != null) {
+                                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
+                                    showGooglePlayServicesAvailabilityErrorDialog(
+                                            ((GooglePlayServicesAvailabilityIOException) mLastError)
+                                                    .getConnectionStatusCode());
+                                } else if (mLastError instanceof UserRecoverableAuthIOException) {
+                                    startActivityForResult(
+                                            ((UserRecoverableAuthIOException) mLastError).getIntent(),
+                                            BaseActivity.REQUEST_AUTHORIZATION);
+                                } else {
+                                    new AlertDialog.Builder(BaseActivity.this).setMessage(
+                                            "The following error occurred:\n"
+                                                    + mLastError.getMessage()
+                                    ).show();
 
-                            // Print results of request.
-                            if (op.getError() != null) {
-                                throw new IOException(getScriptError(op));
+                                }
+                            } else {
+                                new AlertDialog.Builder(BaseActivity.this).setMessage(
+                                        "Request cancelled."
+                                ).show();
+
                             }
-
-                            String toPrettyString= op.toPrettyString();
-                            return 1;
-                        }
-
-                        @Override
-                        public void onPreExecute() {
-
-                        }
-
-                        @Override
-                        public void onPostExecute(Integer output) {
-
                         }
                     }
 
@@ -202,9 +242,13 @@ public class BaseActivity<T> extends AppCompatActivity
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else if (! isDeviceOnline()) {
-            mOutputText.setText("No network connection available.");
+            new AlertDialog.Builder(BaseActivity.this).setMessage(
+                    "No network connection available."
+            ).show();
+
         } else {
-            new MakeRequestTask<T>(mCredential, delegate ).execute();
+            //Tarea por defecto.
+           getResumen();
         }
     }
 
@@ -260,9 +304,10 @@ public class BaseActivity<T> extends AppCompatActivity
         switch(requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
-                    mOutputText.setText(
+                    new AlertDialog.Builder(this).setMessage(
                             "This app requires Google Play Services. Please install " +
-                                    "Google Play Services on your device and relaunch this app.");
+                                       "Google Play Services on your device and relaunch this app."
+                    ).show();
                 } else {
                     getResultsFromApi();
                 }
@@ -386,154 +431,4 @@ public class BaseActivity<T> extends AppCompatActivity
     }
 
 
-
-
-    /**
-     * An asynchronous task that handles the Google Apps Script Execution API call.
-     * Placing the API calls in their own task ensures the UI stays responsive.
-     */
-    private class MakeRequestTask<T> extends AsyncTask<Void, Void, T> {
-        private com.google.api.services.script.Script mService = null;
-        private Exception mLastError = null;
-
-        AppScriptRequestTask<T> delegate;
-
-        public MakeRequestTask(GoogleAccountCredential credential, AppScriptRequestTask<T> delegate) {
-            HttpTransport transport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-            mService = new com.google.api.services.script.Script.Builder(
-                    transport, jsonFactory, setHttpTimeout(credential))
-                    .setApplicationName("Google Apps Script Execution API Android Quickstart")
-                    .build();
-            this.delegate = delegate;
-        }
-
-        /**
-         * Background task to call Google Apps Script Execution API.
-         * @param params no parameters needed for this task.
-         */
-        @Override
-        protected T doInBackground(Void... params) {
-            try {
-                return delegate.getDataFromApi(mService);
-            } catch (Exception e) {
-                mLastError = e;
-                cancel(true);
-                return null;
-            }
-        }
-
-
-
-        @Override
-        protected void onPreExecute() {
-            //mOutputText.setText("");
-            mProgress.show();
-            delegate.onPreExecute();
-
-        }
-
-        @Override
-        protected void onPostExecute(T output) {
-            mProgress.hide();
-            delegate.onPostExecute(output);
-            //mOutputText.setText(output.get(0).id);
-            //DummyContent.ITEMS = output;
-            //BaseActivity.this.startActivity(new Intent(BaseActivity.this, MainActivity.class));
-            /*
-            if (output == null || output.size() == 0) {
-                mOutputText.setText("No results returned.");
-            } else {
-                output.add(0, "Data retrieved using the Google Apps Script Execution API:");
-                mOutputText.setText(TextUtils.join("\n", output));
-            }
-            */
-        }
-
-        @Override
-        protected void onCancelled() {
-            mProgress.hide();
-            if (mLastError != null) {
-                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
-                            ((GooglePlayServicesAvailabilityIOException) mLastError)
-                                    .getConnectionStatusCode());
-                } else if (mLastError instanceof UserRecoverableAuthIOException) {
-                    startActivityForResult(
-                            ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                            BaseActivity.REQUEST_AUTHORIZATION);
-                } else {
-                    //TODO ya no hay mas este texto donde escribir
-                    //mOutputText.setText("The following error occurred:\n"
-                    //        + mLastError.getMessage());
-                }
-            } else {
-                //TODO ya no hay mas este texto donde escribir
-                //mOutputText.setText("Request cancelled.");
-            }
-        }
-    }
-
-
-    /**
-     * Interpret an error response returned by the API and return a String
-     * summary.
-     *
-     * @param op the Operation returning an error response
-     * @return summary of error response, or null if Operation returned no
-     *     error
-     */
-     String getScriptError(Operation op) {
-        if (op.getError() == null) {
-            return null;
-        }
-
-        // Extract the first (and only) set of error details and cast as a Map.
-        // The values of this map are the script's 'errorMessage' and
-        // 'errorType', and an array of stack trace elements (which also need to
-        // be cast as Maps).
-        Map<String, Object> detail = op.getError().getDetails().get(0);
-        List<Map<String, Object>> stacktrace =
-                (List<Map<String, Object>>)detail.get("scriptStackTraceElements");
-
-        java.lang.StringBuilder sb =
-                new StringBuilder("\nScript error message: ");
-        sb.append(detail.get("errorMessage"));
-
-        if (stacktrace != null) {
-            // There may not be a stacktrace if the script didn't start
-            // executing.
-            sb.append("\nScript error stacktrace:");
-            for (Map<String, Object> elem : stacktrace) {
-                sb.append("\n  ");
-                sb.append(elem.get("function"));
-                sb.append(":");
-                sb.append(elem.get("lineNumber"));
-            }
-        }
-        sb.append("\n");
-        return sb.toString();
-    }
-
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface AppScriptRequestTask<T> {
-        // TODO: Update argument type and name
-
-         T getDataFromApi(com.google.api.services.script.Script mService)
-                throws IOException, GoogleAuthException;
-
-         void onPreExecute();
-
-         void onPostExecute(T output);
-    }
 }

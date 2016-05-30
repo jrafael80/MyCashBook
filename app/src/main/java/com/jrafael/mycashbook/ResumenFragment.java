@@ -21,7 +21,7 @@ import java.util.List;
  * Activities containing this fragment MUST implement the {@link OnListFragmentInteractionListener}
  * interface.
  */
-public class ResumenFragment extends Fragment {
+public class ResumenFragment extends Fragment implements BaseActivity.ListenerGetResumen {
 
     // TODO: Customize parameter argument names
     private static final String ARG_COLUMN_COUNT = "column-count";
@@ -52,7 +52,7 @@ public class ResumenFragment extends Fragment {
 
     }
 
-    public void updateItems(List<DummyItem> items)
+    public void onGetResumen(List<DummyItem> items)
     {
         myResumenRecyclerViewAdapter.mValues = items;
         myResumenRecyclerViewAdapter.notifyDataSetChanged();

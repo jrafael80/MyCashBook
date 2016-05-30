@@ -17,20 +17,13 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 
-import com.google.android.gms.auth.GoogleAuthException;
-import com.google.api.services.script.model.ExecutionRequest;
-import com.google.api.services.script.model.Operation;
 import com.jrafael.mycashbook.dummy.DummyContent;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
-public class MainActivity extends BaseActivity<List<DummyContent.DummyItem>>
-        implements ResumenFragment.OnListFragmentInteractionListener,
-        BaseActivity.AppScriptRequestTask<List<DummyContent.DummyItem>> {
+public class MainActivity extends BaseActivity
+        implements ResumenFragment.OnListFragmentInteractionListener {
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -50,20 +43,20 @@ public class MainActivity extends BaseActivity<List<DummyContent.DummyItem>>
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setAppScriptRequestTask(this);
 
         setContentView(R.layout.activity_main2);
 
-
-
-
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
+        //TODO esto no queda muy elegante.
+        setOnListenerGetResumen((ResumenFragment) mSectionsPagerAdapter.mFragments[0]);
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
@@ -76,6 +69,7 @@ public class MainActivity extends BaseActivity<List<DummyContent.DummyItem>>
             @Override
             public void onClick(View view) {
                 tabLayout.getTabAt(1).select();
+
             }
         });
 
@@ -108,69 +102,6 @@ public class MainActivity extends BaseActivity<List<DummyContent.DummyItem>>
         getResultsFromApi();
     }
 
-    @Override
-    public void onPreExecute() {
-    }
-    @Override
-    public List<DummyContent.DummyItem> getDataFromApi(com.google.api.services.script.Script mService)
-            throws IOException, GoogleAuthException {
-        // ID of the script to call. Acquire this from the Apps Script editor,
-        // under Publish > Deploy as API executable.
-        String scriptId =
-                "Mdxc3nmYupeD7rv2wAg50EBDBVl2wBwDj";
-
-        List<DummyContent.DummyItem> folderList = new ArrayList<DummyContent.DummyItem>();
-
-        // Create an execution request object.
-        ExecutionRequest request = new ExecutionRequest()
-
-                .setFunction("getResumen");
-        // .setFunction("appendRow")
-        //         .setParameters(Arrays.asList(new Object[] {
-        //                         Arrays.asList(new Object[] {
-        //                             new Date(), "Mi primer Gasto", 1231, "Kiosko"
-        //                         })
-        //         }));
-
-
-
-
-
-        // Make the request.
-        Operation op =
-                mService.scripts().run(scriptId, request).execute();
-
-        // Print results of request.
-        if (op.getError() != null) {
-            throw new IOException(getScriptError(op));
-        }
-
-        String toPrettyString= op.toPrettyString();
-
-        if (op.getResponse() != null &&
-                op.getResponse().get("result") != null) {
-            // The result provided by the API needs to be cast into
-            // the correct type, based upon what types the Apps Script
-            // function returns. Here, the function returns an Apps
-            // Script Object with String keys and values, so must be
-            // cast into a Java Map (folderSet).
-            List<List<?>> result =
-                    (List<List<?>>)(op.getResponse().get("result"));
-
-            for (List<?> row: result) {
-                folderList.add(new DummyContent.DummyItem(row.get(0).toString(),row.get(1).toString(),row.get(2).toString()));
-            }
-        }
-
-        return folderList;
-    }
-
-
-    @Override
-    public void onPostExecute(List<DummyContent.DummyItem> output) {
-        ((ResumenFragment)mSectionsPagerAdapter.getItem(0)).updateItems(output);
-
-    }
 
 
     @Override
