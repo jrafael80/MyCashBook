@@ -10,11 +10,14 @@
   How to run a sample
   -------------------
 
-  1. Set up the App Script
-  2. Set the scriptId in com.jrafael.mycashbook.MakeRequestTask
+  1. Set up the App Script 
+    If you don't know how, try the next turorial. 
+    https://developers.google.com/apps-script/guides/rest/quickstart/target-script
+  2. Upload to google Drive the MyCashBookSheet.ods file
+  3. Upload to google Drive the myFirstAppScript.json
+  4. Change Id of myFirstAppScript's function sheet_ with the Id of your's instans of MyCashBookSheet.ods
+  5. Deploy myFistAppScript as API Executable
+  6. Set the scriptId in com.jrafael.mycashbook.MakeRequestTask
 
-  Licensing
-  ---------
 
-  Please see the file called LICENSE.
 
